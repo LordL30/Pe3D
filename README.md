@@ -32,7 +32,7 @@ Nada é baixado como malha pronta: toda a anatomia é descrita em código e gera
 - **Ossos, pele, coxins e bursas** são funções de distância com sinal (SDF): uniões suaves de elipsoides, cones arredondados e caixas. As articulações são "conformadas" subtraindo o osso vizinho com uma folga de 1,6 mm. As malhas saem de um *surface nets* com refinamento em dois níveis, gerado em Web Workers em paralelo.
 - **Tendões, músculos, ligamentos, fáscias, vasos e nervos** são tubos de seção elíptica ao longo de curvas Catmull-Rom.
 - A **pele** é feita de *lofts* (seções que variam ao longo da perna e do pé, ajustadas às fotos), unidos aos ossos subcutâneos (maléolos, face medial da tíbia, proeminência de Haglund, navicular, 1º e 5º metatarsos), a dedos com polpa, articulações e unhas. A cor varia por região (perna mais morena, planta mais pálida, dedos e calcanhar mais avermelhados), as dobras recebem oclusão ambiente calculada do próprio campo de distância e um shader adiciona poros, vincos, translucidez avermelhada e a textura descamativa da calosidade. Há pelos na perna e no dorso, como nas fotos. O **tecido subcutâneo** é a pele recuada 1,9 mm.
-- Um teste verifica cada estrutura interna contra o campo de distância da pele, para que nada a atravesse.
+- `node tools/check-skin.mjs` verifica cada estrutura interna contra o campo de distância da pele, para que nada a atravesse.
 - A **deformidade de Haglund** é uma primitiva separada unida ao calcâneo; o destaque em laranja é proporcional ao excesso ósseo em relação ao contorno normal.
 
 Coordenadas em milímetros: `x` anterior (do calcanhar para os dedos), `y` superior, `z` lateral. Solo em `y = 0`; a perna é cortada a 20 cm do solo.
