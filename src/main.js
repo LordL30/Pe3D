@@ -429,7 +429,6 @@ function onSDFMesh(id, m) {
     computeColors(s);
     s.material.needsUpdate = true;
   }
-  if (id === 'skin') buildHair(s);
   if (id === 'skin') {
     // tecido subcutâneo: casca deslocada 2,2 mm para dentro da pele
     const fg = geometryFromMesh(m, { openTop: true, offset: 1.9 });
@@ -440,83 +439,6 @@ function onSDFMesh(id, m) {
   refreshLayerList(def.layer);
   if (id === 'skin') refreshLayerList('fat');
   requestRender();
-}
-
-// opacidade dos fios: linhas de 1 px pesam mais em telas de baixa densidade
-const HAIR_OPACITY = (window.devicePixelRatio || 1) >= 1.5 ? 0.5 : 0.3;
-// Pelos: fios curtos e escuros na perna (densos, como nas fotos), mais esparsos no dorso do pé e dos dedos.
-function buildHair(skin) {
-  const g = skin.mesh.geometry;
-  const pos = g.attributes.position.array, nor = g.attributes.normal.array, idx = g.index.array;
-  const w = skin.weights;
-  let seed = 1234567;
-  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const out = [], cols = [];
-  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
-  const n = new THREE.Vector3(), t = new THREE.Vector3(), p = new THREE.Vector3(), q = new THREE.Vector3();
-  const hairC = [new THREE.Color('#3a271b'), new THREE.Color('#5a4030'), new THREE.Color('#2a1c14')];
-  for (let i = 0; i < idx.length; i += 3) {
-    const ia = idx[i], ib = idx[i + 1], ic = idx[i + 2];
-    a.fromArray(pos, ia * 3); b.fromArray(pos, ib * 3); c.fromArray(pos, ic * 3);
-    const area = q.subVectors(b, a).cross(p.subVectors(c, a)).length() / 2;
-    const cy = (a.y + b.y + c.y) / 3, cx = (a.x + b.x + c.x) / 3;
-    n.fromArray(nor, ia * 3).add(q.fromArray(nor, ib * 3)).add(q.fromArray(nor, ic * 3)).normalize();
-    if (cy > CUT_Y - 7) continue;
-    if (w && (w[ia] + w[ib] + w[ic]) > 0.3) continue;
-    let dens = 0, len = 7, dir = [0, -1, 0.15];
-    if (cy > 68) {
-      dens = 0.032 * sstep(70, 105, cy);
-      if (n.x < -0.6 && cy < 110) dens *= 0.4;          // menos pelo sobre o tendão do calcâneo
-      len = 4.5 + 3 * sstep(90, 180, cy);
-    } else if (cx > 140 && n.y > 0.55) {
-      dens = (cx > 200 ? 0.03 : 0.01) * sstep(140, 175, cx);
-      if (cx > 232) dens = 0;
-      len = cx > 200 ? 3 : 4;
-      dir = [1, -0.2, 0.25];
-    }
-    let count = area * dens;
-    while (count > 0) {
-      if (count < 1 && rnd() > count) break;
-      count -= 1;
-      let u = rnd(), v = rnd();
-      if (u + v > 1) { u = 1 - u; v = 1 - v; }
-      p.copy(a).addScaledVector(q.subVectors(b, a), u).addScaledVector(t.subVectors(c, a), v);
-      t.set(dir[0] + (rnd() - 0.5) * 0.7, dir[1], dir[2] + (rnd() - 0.5) * 0.9);
-      t.addScaledVector(n, -t.dot(n)).normalize();
-      const L = len * (0.6 + rnd() * 0.7);
-      const lift = 0.1 + rnd() * 0.12;
-      const curl = (rnd() - 0.5) * 0.25;
-      const pts = [];
-      for (let k = 0; k <= 3; k++) {
-        const s = k / 3;
-        const side = q.crossVectors(n, t).multiplyScalar(curl * s * s * L);
-        pts.push(p.clone().addScaledVector(t, L * s).addScaledVector(n, 0.08 + L * lift * Math.sin(s * Math.PI * 0.8)).add(side));
-      }
-      const col = hairC[Math.floor(rnd() * hairC.length)];
-      for (let k = 0; k < 3; k++) {
-        out.push(pts[k].x, pts[k].y, pts[k].z, pts[k + 1].x, pts[k + 1].y, pts[k + 1].z);
-        cols.push(col.r, col.g, col.b, col.r, col.g, col.b);
-      }
-    }
-  }
-  const hg = new THREE.BufferGeometry();
-  hg.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
-  hg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-  const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.75, depthWrite: false, clippingPlanes: clipPlanes });
-  mat.userData.kind = 'hair';
-  const lines = new THREE.LineSegments(hg, mat);
-  lines.name = 'hair';
-  lines.userData.id = 'hair';
-  lines.renderOrder = 11;
-  hg.computeBoundingBox();
-  const hs = {
-    id: 'hair', name: 'Pelos', layer: 'skin', kind: 'hair', mesh: lines, material: mat, visible: true,
-    center: hg.boundingBox.getCenter(new THREE.Vector3()), explodeVec: new THREE.Vector3(), pathology: false, parent: null,
-  };
-  structures.set('hair', hs);
-  layerState.get('skin').items.push(hs);
-  root.add(lines);
-  applyMaterialState(hs);
 }
 
 const explodePivot = new THREE.Vector3(62, 60, 0);
@@ -594,11 +516,6 @@ function applyMaterialState(s) {
   const layer = layerState.get(s.layer);
   const op = layer ? layer.opacity : 1;
   const m = s.material;
-  if (s.kind === 'hair') {
-    m.opacity = HAIR_OPACITY * Math.max(0, (op - 0.35) / 0.65);
-    s.mesh.visible = !!(layer && layer.visible && s.visible && op > 0.4);
-    return;
-  }
   const transparent = op < 0.995;
   if (m.transparent !== transparent) m.needsUpdate = true;
   m.transparent = transparent;
