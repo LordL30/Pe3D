@@ -506,3 +506,103 @@ export function smoothMesh(mesh, iterations = 2) {
   }
   return mesh;
 }
+
+// ---------- lofts (seções que variam ao longo de um eixo) ----------
+const LOFT_PAD = 25;
+// Interpolação cúbica de Hermite com tangentes de Catmull-Rom não uniformes.
+function interpolator(ts, vs) {
+  const n = ts.length;
+  const m = vs.map((_, i) => {
+    if (n < 2) return 0;
+    const a = Math.max(0, i - 1), b = Math.min(n - 1, i + 1);
+    return (vs[b] - vs[a]) / (ts[b] - ts[a]);
+  });
+  return (t) => {
+    if (t <= ts[0]) return vs[0];
+    if (t >= ts[n - 1]) return vs[n - 1];
+    let i = 0;
+    while (i < n - 2 && t > ts[i + 1]) i++;
+    const h = ts[i + 1] - ts[i], u = (t - ts[i]) / h;
+    const u2 = u * u, u3 = u2 * u;
+    return (2 * u3 - 3 * u2 + 1) * vs[i] + (u3 - 2 * u2 + u) * h * m[i] + (-2 * u3 + 3 * u2) * vs[i + 1] + (u3 - u2) * h * m[i + 1];
+  };
+}
+
+// Loft vertical (perna): seção elíptica no plano xz. keys: [{ y, cx, cz, rx, rz }]
+export function loftY(keys, RE = 6) {
+  keys = [...keys].sort((a, b) => a.y - b.y);
+  const ys = keys.map((k) => k.y);
+  const F = {};
+  for (const f of ['cx', 'cz', 'rx', 'rz']) F[f] = interpolator(ys, keys.map((k) => k[f]));
+  const y0 = ys[0], y1 = ys[ys.length - 1];
+  let b = [INF, y0, INF, -INF, y1, -INF];
+  for (const k of keys) {
+    b[0] = min(b[0], k.cx - k.rx); b[3] = max(b[3], k.cx + k.rx);
+    b[2] = min(b[2], k.cz - k.rz); b[5] = max(b[5], k.cz + k.rz);
+  }
+  for (let i = 0; i < 3; i++) { b[i] -= LOFT_PAD; b[i + 3] += LOFT_PAD; }
+  return {
+    f: (x, y, z) => {
+      const yc = y < y0 ? y0 : y > y1 ? y1 : y;
+      const rx = F.rx(yc), rz = F.rz(yc);
+      const dx = x - F.cx(yc), dz = z - F.cz(yc);
+      const a = dx / rx, c = dz / rz;
+      const k0 = sqrt(a * a + c * c);
+      const e = dx / (rx * rx), g = dz / (rz * rz);
+      const k1 = sqrt(e * e + g * g) || 1e-9;
+      const d = (k0 * (k0 - 1)) / k1;
+      const dy = max(y0 - y, y - y1);
+      const ea = d + RE, ec = dy + RE;
+      const ox = max(ea, 0), oy = max(ec, 0);
+      return sqrt(ox * ox + oy * oy) + min(max(ea, ec), 0) - RE;
+    },
+    b,
+  };
+}
+
+// Loft longitudinal (pé): seção superelíptica no plano yz, com cisalhamento (dorso inclinado,
+// arco medial elevado). keys: [{ x, yc, zc, h, w, s, nt, nb }]
+export function loftX(keys, RE = 8) {
+  keys = [...keys].sort((a, b) => a.x - b.x);
+  const xs = keys.map((k) => k.x);
+  const F = {};
+  for (const f of ['yc', 'zc', 'h', 'w', 's', 'nt', 'nb']) F[f] = interpolator(xs, keys.map((k) => k[f] ?? (f === 's' ? 0 : f === 'nt' ? 2.2 : f === 'nb' ? 3 : 0)));
+  const x0 = xs[0], x1 = xs[xs.length - 1];
+  const b = [x0, INF, INF, x1, -INF, -INF];
+  for (const k of keys) {
+    const sh = abs(k.s || 0) * k.w;
+    b[1] = min(b[1], k.yc - k.h - sh); b[4] = max(b[4], k.yc + k.h + sh);
+    b[2] = min(b[2], k.zc - k.w); b[5] = max(b[5], k.zc + k.w);
+  }
+  // o campo do loft é aproximado (subestima a distância longe da superfície): caixa folgada para que
+  // o descarte por caixa na união nunca corte uma contribuição real (evita vincos retos na pele)
+  for (let i = 0; i < 3; i++) { b[i] -= LOFT_PAD; b[i + 3] += LOFT_PAD; }
+  return {
+    f: (x, y, z) => {
+      const xc = x < x0 ? x0 : x > x1 ? x1 : x;
+      const h = F.h(xc), w = F.w(xc);
+      const zz = z - F.zc(xc);
+      const yy = y - F.yc(xc) - F.s(xc) * zz;
+      const n = yy > 0 ? F.nt(xc) : F.nb(xc);
+      const ay = abs(yy) / h, az = abs(zz) / w;
+      const A = Math.pow(ay, n), Bz = Math.pow(az, n);
+      const S = A + Bz;
+      let d;
+      if (S < 1e-12) d = -min(h, w);
+      else {
+        const k = Math.pow(S, 1 / n);
+        const kk = Math.pow(k, 1 - n);
+        const gy = kk * Math.pow(ay, n - 1) / h, gz = kk * Math.pow(az, n - 1) / w;
+        const gl = sqrt(gy * gy + gz * gz) || 1e-9;
+        d = (k - 1) / gl;
+        if (d < -min(h, w)) d = -min(h, w);
+      }
+      // extremidades arredondadas (raio RE): evita a aresta viva onde a seção termina
+      const dx = max(x0 - x, x - x1);
+      const ea = d + RE, ec = dx + RE;
+      const ox = max(ea, 0), oy = max(ec, 0);
+      return sqrt(ox * ox + oy * oy) + min(max(ea, ec), 0) - RE;
+    },
+    b,
+  };
+}

@@ -17,7 +17,7 @@ export const LAYERS = [
 export const KIND_COLORS = {
   skin: '#d9a58a',
   callus: '#e9dcbc',
-  nail: '#efd9cf',
+  nail: '#e9bfb2',
   fat: '#e9c25c',
   bone: '#e6dabd',
   cartilage: '#a9d2de',

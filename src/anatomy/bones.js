@@ -113,7 +113,7 @@ const mtDefs = [
 ];
 const mtRaw = mtDefs.map((d, i) => {
   const lb = longBone(d);
-  if (i === 4) return U(3, lb, E([112, 31, 37], [9, 6, 6], euler([0, -20, 0]))); // tuberosidade (processo estiloide)
+  if (i === 4) return U(3, lb, E([112, 31, 36], [8.5, 5.5, 5], euler([0, -20, 0]))); // tuberosidade (processo estiloide)
   return lb;
 });
 

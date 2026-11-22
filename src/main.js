@@ -129,10 +129,15 @@ function makeMaterial(kind) {
   let m;
   switch (kind) {
     case 'skin':
-      m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.62, sheen: 0.5, sheenRoughness: 0.6, sheenColor: new THREE.Color('#ff9a7a'), clearcoat: 0.04 });
+      m = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff, vertexColors: true, roughness: 0.56, specularIntensity: 0.45,
+        sheen: 0.35, sheenRoughness: 0.5, sheenColor: new THREE.Color('#ffc4aa'),
+        clearcoat: 0.08, clearcoatRoughness: 0.55,
+      });
+      m.userData.skinShader = true;
       break;
     case 'nail':
-      m = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 0.6, clearcoatRoughness: 0.3 });
+      m = new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.22, clearcoat: 0.8, clearcoatRoughness: 0.18, sheen: 0.2, sheenColor: new THREE.Color('#ffffff') });
       break;
     case 'fat': case 'kager': case 'heelpad':
       m = new THREE.MeshStandardMaterial({ color: c, roughness: 0.42, metalness: 0 });
@@ -169,7 +174,59 @@ function makeMaterial(kind) {
   m.userData.kind = kind;
   m.userData.baseEmissive = m.emissive ? m.emissive.clone() : null;
   addCap(m, CAPS[kind] || '#888888');
+  if (m.userData.skinShader) addSkinShader(m);
   return m;
+}
+
+// Pele: microrrelevo procedural (poros, manchas e vincos), translucidez avermelhada nas bordas
+// (imitação barata de espalhamento subsuperficial) e calosidade áspera e descamativa.
+const SKIN_GLSL = `
+uniform vec3 uSSS;
+varying vec3 vObjPos;
+varying float vCallus;
+float h3(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float vn(vec3 x) {
+  vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float skinH(vec3 p) {
+  float pores = vn(p * 2.2);
+  float mottle = vn(p * 0.7 + 3.1);
+  // vincos transversais na frente do tornozelo e no dorso dos dedos
+  float crease = vn(vec3(p.x * 0.35, p.y * 2.4, p.z * 0.35));
+  float ankle = smoothstep(72.0, 86.0, p.x) * (1.0 - smoothstep(98.0, 108.0, p.x)) * smoothstep(70.0, 80.0, p.y) * (1.0 - smoothstep(96.0, 104.0, p.y));
+  float knuckle = smoothstep(200.0, 212.0, p.x) * smoothstep(18.0, 26.0, p.y);
+  float flakes = vn(p * 3.4 + 9.0);
+  return pores * 0.5 + mottle * 0.35 + crease * (ankle + knuckle) * 0.9 + flakes * vCallus * 1.4;
+}`;
+function addSkinShader(mat) {
+  const capOBC = mat.onBeforeCompile;
+  const sss = { value: new THREE.Color('#c4513b') };
+  mat.onBeforeCompile = (shader) => {
+    capOBC(shader);
+    shader.uniforms.uSSS = sss;
+    shader.vertexShader = 'attribute float aCallus;\nvarying vec3 vObjPos;\nvarying float vCallus;\n' + shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n  vObjPos = position;\n  vCallus = aCallus;',
+    );
+    shader.fragmentShader = SKIN_GLSL + shader.fragmentShader
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.92, vCallus);')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+  {
+    float e = 0.18;
+    vec3 p = vObjPos;
+    float h0 = skinH(p);
+    vec3 gW = vec3(skinH(p + vec3(e, 0.0, 0.0)) - h0, skinH(p + vec3(0.0, e, 0.0)) - h0, skinH(p + vec3(0.0, 0.0, e)) - h0) / e;
+    vec3 gV = (viewMatrix * vec4(gW, 0.0)).xyz;
+    float amp = 0.055 * (1.0 + 2.5 * vCallus);
+    normal = normalize(normal - amp * (gV - dot(gV, normal) * normal));
+  }`)
+      .replace('#include <opaque_fragment>', `float fres = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 2.2);
+  outgoingLight += uSSS * diffuseColor.rgb * (0.06 + 0.32 * fres) * (1.0 - vCallus * 0.7);
+  #include <opaque_fragment>`);
+  };
+  mat.customProgramCacheKey = () => 'skin-v2';
 }
 
 // ------------------------------------------------------------------ registro de estruturas
@@ -256,6 +313,44 @@ function vnoise(x, y, z) {
   return r;
 }
 
+// Pintura da pele a partir das fotos: pé claro e rosado, perna um pouco mais morena, planta mais
+// pálida e amarelada, ponta dos dedos e calcanhar mais avermelhados, dobras escurecidas pela oclusão.
+const SK = {
+  foot: new THREE.Color('#e0ad95'), leg: new THREE.Color('#cf9f84'), sole: new THREE.Color('#ebc6aa'),
+  red: new THREE.Color('#dc8f7f'), deep: new THREE.Color('#9c4f44'), callus: new THREE.Color('#ead9b8'),
+  flake: new THREE.Color('#f6f0e2'), knuckle: new THREE.Color('#cf8c7d'),
+};
+const tmpB = new THREE.Color();
+const sstep = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+function paintSkin(x, y, z, nx, ny, nz, cal, ao) {
+  colorTmp.copy(SK.foot);
+  colorTmp.lerp(SK.leg, sstep(70, 130, y) * 0.9);
+  // planta e bordas que tocam o chão
+  colorTmp.lerp(SK.sole, sstep(-0.2, -0.75, ny) * (1 - sstep(8, 22, y)));
+  // dedos: pontas e polpas mais rosadas; dorso das articulações mais escuro
+  const toe = sstep(200, 225, x);
+  colorTmp.lerp(SK.red, toe * (0.25 + 0.35 * sstep(235, 255, x)));
+  colorTmp.lerp(SK.knuckle, toe * sstep(0.4, 0.9, ny) * 0.35);
+  // calcanhar (face posterior e plantar) avermelhado por pressão
+  colorTmp.lerp(SK.red, (1 - sstep(10, 32, x)) * (1 - sstep(30, 60, y)) * 0.28);
+  // manchas suaves
+  const m1 = vnoise(x * 0.09, y * 0.09, z * 0.09), m2 = vnoise(x * 0.35 + 5, y * 0.35, z * 0.35);
+  colorTmp.multiplyScalar(0.94 + m1 * 0.08 + m2 * 0.04);
+  colorTmp.lerp(SK.red, Math.max(0, m1 - 0.55) * 0.35);
+  // calosidade: espessa, amarelada, com escamas; eritema em volta
+  if (cal > 0) {
+    colorTmp.lerp(SK.red, Math.min(1, cal * 2.4) * 0.4 * (1 - cal));
+    colorTmp.lerp(SK.callus, Math.pow(cal, 1.2) * 0.62);
+    const fl = vnoise(x * 1.3, y * 1.3, z * 1.3);
+    if (cal > 0.3 && fl > 0.6) colorTmp.lerp(SK.flake, (fl - 0.6) * 1.8 * cal);
+  }
+  // oclusão: escurece e avermelha as dobras (sangue sob a pele)
+  const occ = 1 - ao;
+  tmpB.copy(colorTmp).lerp(SK.deep, 0.55);
+  colorTmp.lerp(tmpB, Math.min(1, occ * 1.4));
+  colorTmp.multiplyScalar(1 - occ * 0.35);
+}
+
 function computeColors(s) {
   const g = s.mesh.geometry;
   const pos = g.attributes.position.array;
@@ -271,19 +366,7 @@ function computeColors(s) {
       if (y > CUT_Y - 0.9 && nor[i * 3 + 1] > 0.8) colorTmp.copy(C_BONECUT);
       if (w && haglundOn) colorTmp.lerp(C_HAG, Math.min(1, w[i] * 1.1));
     } else if (s.kind === 'skin') {
-      const nz = vnoise(x * 0.25, y * 0.25, z * 0.25);
-      colorTmp.copy(C_SKIN).multiplyScalar(0.95 + nz * 0.08);
-      // leve variação: dorso e perna um pouco mais morenos, planta mais clara
-      const sole = Math.max(0, Math.min(1, (14 - y) / 12));
-      colorTmp.offsetHSL(0, -0.04 * sole, 0.05 * sole);
-      if (w) {
-        const ww = w[i];
-        // eritema discreto ao redor e calosidade no centro
-        colorTmp.lerp(C_RED, Math.min(1, ww * 2.2) * 0.35 * (1 - ww));
-        colorTmp.lerp(C_CALLUS, Math.pow(ww, 1.3) * 0.85);
-        const flake = vnoise(x * 1.6, y * 1.6, z * 1.6);
-        if (ww > 0.35 && flake > 0.62) colorTmp.lerp(new THREE.Color('#f4efe2'), (flake - 0.62) * 1.6 * ww);
-      }
+      paintSkin(x, y, z, nor[i * 3], nor[i * 3 + 1], nor[i * 3 + 2], w ? w[i] : 0, s.ao ? s.ao[i] : 1);
     } else {
       colorTmp.set(0xffffff);
     }
@@ -338,10 +421,15 @@ function onSDFMesh(id, m) {
   const g = geometryFromMesh(m, { openTop: def.openTop });
   const s = register(def, g, def.layer);
   s.weights = m.weights || null;
+  s.ao = m.ao || null;
+  if (s.kind === 'skin') {
+    g.setAttribute('aCallus', new THREE.BufferAttribute(s.weights ? Float32Array.from(s.weights) : new Float32Array(g.attributes.position.count), 1));
+  }
   if (s.kind === 'bone' || s.kind === 'skin') {
     computeColors(s);
     s.material.needsUpdate = true;
   }
+  if (id === 'skin') buildHair(s);
   if (id === 'skin') {
     // tecido subcutâneo: casca deslocada 2,2 mm para dentro da pele
     const fg = geometryFromMesh(m, { openTop: true, offset: 1.9 });
@@ -352,6 +440,83 @@ function onSDFMesh(id, m) {
   refreshLayerList(def.layer);
   if (id === 'skin') refreshLayerList('fat');
   requestRender();
+}
+
+// opacidade dos fios: linhas de 1 px pesam mais em telas de baixa densidade
+const HAIR_OPACITY = (window.devicePixelRatio || 1) >= 1.5 ? 0.5 : 0.3;
+// Pelos: fios curtos e escuros na perna (densos, como nas fotos), mais esparsos no dorso do pé e dos dedos.
+function buildHair(skin) {
+  const g = skin.mesh.geometry;
+  const pos = g.attributes.position.array, nor = g.attributes.normal.array, idx = g.index.array;
+  const w = skin.weights;
+  let seed = 1234567;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const out = [], cols = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const n = new THREE.Vector3(), t = new THREE.Vector3(), p = new THREE.Vector3(), q = new THREE.Vector3();
+  const hairC = [new THREE.Color('#3a271b'), new THREE.Color('#5a4030'), new THREE.Color('#2a1c14')];
+  for (let i = 0; i < idx.length; i += 3) {
+    const ia = idx[i], ib = idx[i + 1], ic = idx[i + 2];
+    a.fromArray(pos, ia * 3); b.fromArray(pos, ib * 3); c.fromArray(pos, ic * 3);
+    const area = q.subVectors(b, a).cross(p.subVectors(c, a)).length() / 2;
+    const cy = (a.y + b.y + c.y) / 3, cx = (a.x + b.x + c.x) / 3;
+    n.fromArray(nor, ia * 3).add(q.fromArray(nor, ib * 3)).add(q.fromArray(nor, ic * 3)).normalize();
+    if (cy > CUT_Y - 7) continue;
+    if (w && (w[ia] + w[ib] + w[ic]) > 0.3) continue;
+    let dens = 0, len = 7, dir = [0, -1, 0.15];
+    if (cy > 68) {
+      dens = 0.032 * sstep(70, 105, cy);
+      if (n.x < -0.6 && cy < 110) dens *= 0.4;          // menos pelo sobre o tendão do calcâneo
+      len = 4.5 + 3 * sstep(90, 180, cy);
+    } else if (cx > 140 && n.y > 0.55) {
+      dens = (cx > 200 ? 0.03 : 0.01) * sstep(140, 175, cx);
+      if (cx > 232) dens = 0;
+      len = cx > 200 ? 3 : 4;
+      dir = [1, -0.2, 0.25];
+    }
+    let count = area * dens;
+    while (count > 0) {
+      if (count < 1 && rnd() > count) break;
+      count -= 1;
+      let u = rnd(), v = rnd();
+      if (u + v > 1) { u = 1 - u; v = 1 - v; }
+      p.copy(a).addScaledVector(q.subVectors(b, a), u).addScaledVector(t.subVectors(c, a), v);
+      t.set(dir[0] + (rnd() - 0.5) * 0.7, dir[1], dir[2] + (rnd() - 0.5) * 0.9);
+      t.addScaledVector(n, -t.dot(n)).normalize();
+      const L = len * (0.6 + rnd() * 0.7);
+      const lift = 0.1 + rnd() * 0.12;
+      const curl = (rnd() - 0.5) * 0.25;
+      const pts = [];
+      for (let k = 0; k <= 3; k++) {
+        const s = k / 3;
+        const side = q.crossVectors(n, t).multiplyScalar(curl * s * s * L);
+        pts.push(p.clone().addScaledVector(t, L * s).addScaledVector(n, 0.08 + L * lift * Math.sin(s * Math.PI * 0.8)).add(side));
+      }
+      const col = hairC[Math.floor(rnd() * hairC.length)];
+      for (let k = 0; k < 3; k++) {
+        out.push(pts[k].x, pts[k].y, pts[k].z, pts[k + 1].x, pts[k + 1].y, pts[k + 1].z);
+        cols.push(col.r, col.g, col.b, col.r, col.g, col.b);
+      }
+    }
+  }
+  const hg = new THREE.BufferGeometry();
+  hg.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  hg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const mat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.75, depthWrite: false, clippingPlanes: clipPlanes });
+  mat.userData.kind = 'hair';
+  const lines = new THREE.LineSegments(hg, mat);
+  lines.name = 'hair';
+  lines.userData.id = 'hair';
+  lines.renderOrder = 11;
+  hg.computeBoundingBox();
+  const hs = {
+    id: 'hair', name: 'Pelos', layer: 'skin', kind: 'hair', mesh: lines, material: mat, visible: true,
+    center: hg.boundingBox.getCenter(new THREE.Vector3()), explodeVec: new THREE.Vector3(), pathology: false, parent: null,
+  };
+  structures.set('hair', hs);
+  layerState.get('skin').items.push(hs);
+  root.add(lines);
+  applyMaterialState(hs);
 }
 
 const explodePivot = new THREE.Vector3(62, 60, 0);
@@ -429,6 +594,11 @@ function applyMaterialState(s) {
   const layer = layerState.get(s.layer);
   const op = layer ? layer.opacity : 1;
   const m = s.material;
+  if (s.kind === 'hair') {
+    m.opacity = HAIR_OPACITY * Math.max(0, (op - 0.35) / 0.65);
+    s.mesh.visible = !!(layer && layer.visible && s.visible && op > 0.4);
+    return;
+  }
   const transparent = op < 0.995;
   if (m.transparent !== transparent) m.needsUpdate = true;
   m.transparent = transparent;
