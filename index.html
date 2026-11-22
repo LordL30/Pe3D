@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pé 3D · Haglund</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Modelo anatômico 3D interativo do pé direito, da pele aos ossos, com deformidade de Haglund.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: palco 3D em tela cheia; painel de camadas à esquerda (gaveta inferior no celular);
+   ficha da estrutura à direita; tour como cartão inferior. */
+:root {
+  --bg: #e5e9eb;
+  --stage-a: #f3f5f5;
+  --stage-b: #cdd6db;
+  --panel: rgba(249, 250, 250, 0.93);
+  --panel-solid: #f9fafa;
+  --fg: #15202a;
+  --muted: #586773;
+  --line: #d4dce1;
+  --line-strong: #b3c0c8;
+  --accent: #1c5e8e;
+  --accent-soft: #dbe8f2;
+  --alert: #c2452a;
+  --alert-soft: #f7e2da;
+  --on-alert: #ffffff;
+  --shadow: 0 1px 2px rgba(20, 32, 42, 0.07), 0 10px 28px rgba(20, 32, 42, 0.11);
+  --font-ui: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1317; --stage-a: #1c262d; --stage-b: #0a0f12;
+    --panel: rgba(19, 27, 33, 0.92); --panel-solid: #131b21;
+    --fg: #e1e7eb; --muted: #94a3ae; --line: #25313a; --line-strong: #36454f;
+    --accent: #72b2e2; --accent-soft: #19324a; --alert: #f17d5d; --alert-soft: #3b221c; --on-alert: #1d0e0a;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1317; --stage-a: #1c262d; --stage-b: #0a0f12;
+  --panel: rgba(19, 27, 33, 0.92); --panel-solid: #131b21;
+  --fg: #e1e7eb; --muted: #94a3ae; --line: #25313a; --line-strong: #36454f;
+  --accent: #72b2e2; --accent-soft: #19324a; --alert: #f17d5d; --alert-soft: #3b221c; --on-alert: #1d0e0a;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 30px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font-ui);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#app { position: relative; height: 100%; width: 100%; overflow: hidden; }
+#stage {
+  position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 55% 35%, var(--stage-a), var(--stage-b));
+  touch-action: none;
+}
+#stage canvas { display: block; width: 100%; height: 100%; }
+
+/* ---------- barra superior ---------- */
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding-block: 14px 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  z-index: 5;
+}
+.topbar > * { pointer-events: auto; }
+.brand { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.brand h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.brand p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.brand .side { font-family: var(--font-data); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+
+.views {
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--shadow); backdrop-filter: blur(8px);
+  overflow-x: auto; max-width: 100%; scrollbar-width: none;
+}
+.views::-webkit-scrollbar { display: none; }
+.views button {
+  border: 0; background: transparent; padding: 6px 11px; border-radius: 999px;
+  font-size: 12.5px; color: var(--fg); white-space: nowrap;
+}
+.views button:hover { background: var(--accent-soft); }
+.views .sep { width: 1px; background: var(--line); margin: 4px 3px; flex: none; }
+.views #reset { color: var(--muted); }
+
+#panel-toggle {
+  display: none; border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+  padding: 7px 13px; box-shadow: var(--shadow); font-weight: 500; font-size: 13px;
+}
+
+/* ---------- painel ---------- */
+#panel {
+  position: absolute; z-index: 6;
+  top: 78px; left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: 318px;
+  display: flex; flex-direction: column;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.panel-scroll { overflow-y: auto; padding: 4px 0 12px; overscroll-behavior: contain; }
+.panel-head { display: none; }
+.sec { padding: 12px 14px 6px; border-bottom: 1px solid var(--line); }
+.sec:last-child { border-bottom: 0; }
+.sec h2 {
+  margin: 0 0 8px; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); font-family: var(--font-data);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.search {
+  width: 100%; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel-solid); font-size: 13px; margin-bottom: 8px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.chip {
+  border: 1px solid var(--line-strong); background: transparent; border-radius: 999px;
+  padding: 3px 10px; font-size: 12px;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+
+#layers { list-style: none; margin: 0; padding: 0; }
+.layer { border-radius: 8px; }
+.layer.open { background: color-mix(in srgb, var(--accent-soft) 45%, transparent); }
+.layer-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 74px; align-items: center; gap: 4px; padding: 3px 4px; }
+.disclose { border: 0; background: transparent; width: 22px; height: 22px; display: grid; place-items: center; color: var(--muted); border-radius: 6px; }
+.disclose:hover { background: var(--accent-soft); }
+.disclose svg { width: 12px; height: 12px; transition: transform 0.15s; }
+.disclose[aria-expanded="true"] svg { transform: rotate(90deg); }
+.layer-toggle { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; padding: 3px 0; }
+.layer-toggle input { accent-color: var(--accent); margin: 0; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--sw); flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+.layer-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
+.count { font-family: var(--font-data); font-size: 10.5px; color: var(--muted); margin-left: auto; padding-right: 4px; }
+.opacity { width: 100%; accent-color: var(--accent); height: 18px; }
+.items { list-style: none; margin: 0 0 6px 26px; padding: 2px 0; max-height: 220px; overflow-y: auto; }
+.item label { display: flex; gap: 7px; align-items: flex-start; padding: 2px 4px; border-radius: 5px; font-size: 12.5px; cursor: pointer; }
+.item input { accent-color: var(--accent); margin: 2px 0 0; flex: none; }
+.item span:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.item.is-selected label { background: var(--accent-soft); }
+.item.is-path span::after { content: "•"; color: var(--alert); margin-left: 4px; font-weight: 600; }
+
+.toggle { display: flex; align-items: flex-start; gap: 9px; padding: 5px 0; cursor: pointer; font-size: 13.5px; }
+.toggle input { accent-color: var(--alert); margin: 3px 0 0; flex: none; }
+.toggle small { display: block; color: var(--muted); font-size: 12px; }
+.hag-note { font-size: 12.5px; color: var(--muted); margin: 4px 0 10px; max-width: 62ch; }
+.btn-primary {
+  width: 100%; border: 0; border-radius: 8px; padding: 9px 12px; margin: 4px 0 8px;
+  background: var(--alert); color: var(--on-alert); font-weight: 500; font-size: 13.5px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-primary:hover { filter: brightness(1.06); }
+.field { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 8px; padding: 5px 0; font-size: 13px; }
+.field label { color: var(--muted); }
+.field input[type=range] { width: 100%; accent-color: var(--accent); }
+.field select { width: 100%; padding: 5px 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel-solid); }
+.clip-row { display: flex; gap: 6px; align-items: center; }
+.clip-row input { flex: 1; min-width: 0; }
+.mono { font-family: var(--font-data); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 46px; text-align: right; }
+.icon-btn { border: 1px solid var(--line); background: var(--panel-solid); border-radius: 7px; padding: 4px 8px; font-size: 12px; }
+.icon-btn:disabled { opacity: 0.45; cursor: default; }
+.disclaimer { font-size: 11.5px; color: var(--muted); margin: 6px 0 4px; line-height: 1.45; }
+.kbd { font-family: var(--font-data); font-size: 11px; color: var(--muted); }
+
+/* ---------- ficha da estrutura ---------- */
+#info {
+  position: absolute; z-index: 7; top: 78px;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  width: 330px; max-width: calc(100% - 32px);
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  padding: 14px 16px 12px;
+}
+.info-top { display: flex; align-items: flex-start; gap: 10px; }
+.info-top h3 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3; flex: 1; min-width: 0; text-wrap: balance; }
+.close { border: 0; background: transparent; color: var(--muted); width: 28px; height: 28px; border-radius: 7px; font-size: 18px; line-height: 1; flex: none; }
+.close:hover { background: var(--accent-soft); color: var(--fg); }
+.layer-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin: 6px 0 8px;
+  font-family: var(--font-data); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+.layer-chip::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--chip); }
+#info-text { margin: 0 0 10px; font-size: 13.5px; line-height: 1.55; max-height: 40vh; overflow-y: auto; }
+.path-flag {
+  display: inline-block; font-size: 11.5px; font-weight: 500; color: var(--alert); background: var(--alert-soft);
+  border-radius: 999px; padding: 2px 9px; margin-bottom: 8px;
+}
+.info-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.info-actions button { border: 1px solid var(--line-strong); background: transparent; border-radius: 7px; padding: 5px 10px; font-size: 12.5px; }
+.info-actions button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---------- tour ---------- */
+#tour {
+  position: absolute; z-index: 8;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  width: min(600px, calc(100% - 32px));
+  background: var(--panel); border: 1px solid var(--line); border-left: 0; border-radius: var(--r);
+  box-shadow: var(--shadow); backdrop-filter: blur(10px);
+  padding: 14px 16px 12px; display: grid; gap: 6px;
+}
+#tour .tour-head { display: flex; align-items: center; gap: 10px; }
+#tour-count { font-family: var(--font-data); font-size: 11px; color: var(--alert); letter-spacing: 0.05em; }
+#tour h3 { margin: 0; font-size: 16px; font-weight: 600; flex: 1; text-wrap: balance; }
+#tour p { margin: 0; font-size: 13.5px; line-height: 1.55; max-height: 30vh; overflow-y: auto; }
+.tour-nav { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.tour-nav button { border: 1px solid var(--line-strong); background: transparent; border-radius: 8px; padding: 6px 14px; font-size: 13px; }
+.tour-nav #tour-next { background: var(--alert); border-color: var(--alert); color: var(--on-alert); }
+.tour-nav button:disabled { opacity: 0.4; cursor: default; }
+body.touring #panel { opacity: 0; pointer-events: none; transform: translateX(-12px); }
+#panel { transition: opacity 0.2s, transform 0.2s; }
+
+/* ---------- rótulos 3D ---------- */
+#labels { position: absolute; inset: 0; pointer-events: none; z-index: 4; overflow: hidden; }
+.label3d {
+  position: absolute; left: 0; top: 0; pointer-events: auto;
+  display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none;
+  transition: opacity 0.2s;
+}
+.label3d .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--alert); box-shadow: 0 0 0 2px var(--panel-solid); margin-left: -4.5px; margin-top: -4.5px; flex: none; }
+.label3d .txt {
+  font-size: 11.5px; font-weight: 500; white-space: nowrap; color: var(--fg);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; margin-top: -4.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.label3d.is-behind { opacity: 0; pointer-events: none; }
+.label3d.is-shifted .txt { border-style: dashed; }
+.label3d:hover .txt { border-color: var(--alert); }
+
+#tooltip {
+  position: absolute; left: 0; top: 0; z-index: 9; pointer-events: none;
+  background: var(--fg); color: var(--bg); font-size: 12px; padding: 3px 8px; border-radius: 6px;
+  white-space: nowrap; max-width: 60vw; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- gizmo e escala ---------- */
+#gizmo { position: absolute; z-index: 3; right: max(10px, env(safe-area-inset-right, 0px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px)); width: 92px; height: 92px; overflow: visible; pointer-events: none; }
+#gizmo line { stroke-width: 2.2; stroke-linecap: round; }
+#gizmo line.neg { stroke-width: 1.2; stroke-dasharray: 2 3; }
+#gizmo text { font: 500 10px var(--font-data); text-anchor: middle; }
+#gizmo .ax-x { stroke: #d0573b; fill: #d0573b; }
+#gizmo .ax-y { stroke: #3f9a5c; fill: #3f9a5c; }
+#gizmo .ax-z { stroke: #3d7fc1; fill: #3d7fc1; }
+#gizmo text { stroke: none; }
+#scalebar {
+  position: absolute; z-index: 3; bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  left: calc(max(16px, env(safe-area-inset-left, 0px)) + 334px);
+  display: flex; flex-direction: column; gap: 3px; pointer-events: none;
+}
+#scalebar .bar { height: 5px; border: 1.5px solid var(--fg); border-top: 0; opacity: 0.7; }
+#scalebar .lbl { font-family: var(--font-data); font-size: 11px; color: var(--muted); }
+
+/* ---------- carregamento ---------- */
+#loader {
+  position: absolute; z-index: 20; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(320px, calc(100% - 48px)); padding: 16px 18px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow);
+  transition: opacity 0.4s;
+}
+#loader.done { opacity: 0; }
+#loader strong { display: block; font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+#loader .ptext { font-family: var(--font-data); font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#loader .track { height: 4px; border-radius: 4px; background: var(--line); overflow: hidden; margin-top: 10px; }
+#loader .fill { height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); transition: transform 0.2s; }
+
+/* ---------- celular ---------- */
+@media (max-width: 760px) {
+  .brand p { display: none; }
+  .topbar { flex-wrap: wrap; }
+  .views { order: 3; width: 100%; }
+  #panel-toggle { display: inline-flex; }
+  #panel {
+    top: auto; left: 0; right: 0; width: auto; bottom: 0;
+    max-height: 72%; border-radius: 14px 14px 0 0; border-bottom: 0;
+    transform: translateY(105%); transition: transform 0.25s ease;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body.panel-open #panel { transform: translateY(0); }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px 0; }
+  .panel-head strong { font-size: 14px; }
+  .sec { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #info { top: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; width: auto; max-width: none; }
+  #info-text { max-height: 26vh; }
+  #scalebar { left: max(16px, env(safe-area-inset-left, 0px)); }
+  .label3d .txt { font-size: 10.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="app">
+  <div id="stage" aria-label="Modelo 3D do pé direito. Arraste para girar, role ou faça pinça para aproximar, arraste com o botão direito ou dois dedos para mover."></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="side">Pé direito · vista anatômica</span>
+      <h1>Pé 3D · Haglund</h1>
+      <p>Da pele ao osso. Clique numa estrutura para ver o nome.</p>
+    </div>
+    <nav class="views" aria-label="Vistas">
+      <button data-view="lateral" title="Tecla 1">Lateral</button>
+      <button data-view="medial" title="Tecla 2">Medial</button>
+      <button data-view="posterior" title="Tecla 3">Posterior</button>
+      <button data-view="anterior" title="Tecla 4">Anterior</button>
+      <button data-view="dorsal" title="Tecla 5">Dorsal</button>
+      <button data-view="plantar" title="Tecla 6">Plantar</button>
+      <button data-view="heel">Calcanhar</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button id="reset" title="Restaurar tudo">Restaurar</button>
+    </nav>
+    <button id="panel-toggle" aria-expanded="false" aria-controls="panel">Camadas</button>
+  </header>
+
+  <aside id="panel" aria-label="Camadas e ferramentas">
+    <div class="panel-head"><strong>Camadas e ferramentas</strong><button class="close" id="panel-close" aria-label="Fechar">×</button></div>
+    <div class="panel-scroll">
+      <section class="sec">
+        <h2>Camadas <span class="kbd">opacidade</span></h2>
+        <input class="search" id="filter" type="search" placeholder="Buscar estrutura (ex.: Aquiles)" aria-label="Buscar estrutura">
+        <div class="chips">
+          <button class="chip" id="preset-all">Tudo</button>
+          <button class="chip" id="preset-deep">Sem pele</button>
+          <button class="chip" id="preset-xray">Pele translúcida</button>
+          <button class="chip" id="preset-bones">Só esqueleto</button>
+        </div>
+        <ul id="layers"></ul>
+      </section>
+
+      <section class="sec">
+        <h2>Haglund</h2>
+        <button class="btn-primary" id="tour-start">Tour guiado: da pele ao osso</button>
+        <label class="toggle"><input type="checkbox" id="hag-highlight" checked><span>Destacar a deformidade<small>Proeminência em laranja, bursas inflamadas e rótulos.</small></span></label>
+        <label class="toggle"><input type="checkbox" id="hag-compare"><span>Comparar com calcâneo normal<small>Mostra em azul o contorno sem a proeminência.</small></span></label>
+        <p class="hag-note">Saliência póstero-lateral do calcâneo com bursite retrocalcânea e subcutânea, como sugerem as fotos (calosidade na face externa do calcanhar).</p>
+      </section>
+
+      <section class="sec">
+        <h2>Ferramentas</h2>
+        <div class="field">
+          <label for="explode">Explodir</label>
+          <input type="range" id="explode" min="0" max="100" value="0">
+        </div>
+        <div class="field">
+          <label for="clip-axis">Corte</label>
+          <select id="clip-axis">
+            <option value="none">Sem corte</option>
+            <option value="sagittal">Sagital (medial ↔ lateral)</option>
+            <option value="coronal">Frontal (calcanhar ↔ dedos)</option>
+            <option value="transverse">Transversal (planta ↔ perna)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="clip-pos">Posição</label>
+          <div class="clip-row"><input type="range" id="clip-pos" min="0" max="100" value="0"><span class="mono" id="clip-val"></span><button class="icon-btn" id="clip-flip" title="Inverter o lado do corte">Inverter</button></div>
+        </div>
+        <p class="disclaimer">Arraste para girar · role ou pinça para zoom · botão direito ou dois dedos para mover · duplo clique centraliza. Teclas 1–6 trocam a vista.</p>
+        <p class="disclaimer">Modelo ilustrativo, construído a partir das fotos e de proporções anatômicas de referência; não é um exame de imagem e não substitui avaliação médica.</p>
+      </section>
+    </div>
+  </aside>
+
+  <div id="info" hidden>
+    <div class="info-top"><h3 id="info-name"></h3><button class="close" id="info-close" aria-label="Fechar ficha">×</button></div>
+    <span class="layer-chip" id="info-layer"></span>
+    <div><span class="path-flag" id="info-path" hidden>Relacionado ao Haglund</span></div>
+    <p id="info-text"></p>
+    <div class="info-actions">
+      <button id="info-focus">Centralizar</button>
+      <button id="info-isolate">Isolar</button>
+      <button id="info-hide">Ocultar</button>
+    </div>
+  </div>
+
+  <div id="tour" hidden role="dialog" aria-label="Tour guiado">
+    <div class="tour-head"><span id="tour-count"></span><h3 id="tour-title"></h3><button class="close" id="tour-close" aria-label="Sair do tour">×</button></div>
+    <p id="tour-text"></p>
+    <div class="tour-nav"><button id="tour-prev">Anterior</button><button id="tour-next">Próximo</button></div>
+  </div>
+
+  <div id="labels"></div>
+  <div id="tooltip" hidden></div>
+  <svg id="gizmo" viewBox="0 0 80 80" aria-hidden="true"></svg>
+  <div id="scalebar" aria-hidden="true"><div class="bar"></div><span class="lbl"></span></div>
+
+  <div id="loader" role="status">
+    <strong>Montando o pé…</strong>
+    <span class="ptext">Gerando ossos, tendões e partes moles</span>
+    <div class="track"><div class="fill"></div></div>
+  </div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

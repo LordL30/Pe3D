@@ -1,0 +1,55 @@
+// Tour guiado: da pele ao osso, pela região da deformidade de Haglund.
+export const TOUR = [
+  {
+    title: 'O que as fotos mostram',
+    text: 'Na face póstero-lateral do calcanhar direito há uma saliência endurecida, com pele espessa e descamando (calosidade). É o aspecto típico do "pump bump": o contraforte do calçado atrita repetidamente sobre uma proeminência óssea do calcâneo.',
+    layers: { skin: 1 },
+    view: { target: [24, 60, 8], dir: [-0.78, 0.24, 0.58], dist: 320 },
+  },
+  {
+    title: 'Bursa subcutânea (retroaquileana)',
+    text: 'Logo abaixo da pele, entre ela e o tendão do calcâneo, fica a bursa subcutânea. Com o atrito ela inflama e espessa, e é a principal responsável pelo volume e pela vermelhidão do "pump bump".',
+    layers: { skin: 0.18, bursae: 1, tendons: 1, bones: 1, cartilage: 1 },
+    hide: ['kager', 'heelpad'],
+    select: 'bursa-subcut',
+    view: { target: [18, 56, 6], dir: [-0.72, 0.25, 0.65], dist: 230 },
+  },
+  {
+    title: 'Tendão do calcâneo (Aquiles)',
+    text: 'O tendão desce pela parte de trás do tornozelo e se insere no terço médio da face posterior do calcâneo. Logo acima da inserção ele passa rente ao ângulo póstero-superior do osso, exatamente onde fica a proeminência.',
+    layers: { tendons: 1, bones: 1, cartilage: 1, muscles: 1, bursae: 1 },
+    hide: ['heelpad'],
+    select: 'achilles',
+    view: { target: [22, 80, 4], dir: [-0.65, 0.2, 0.73], dist: 330 },
+  },
+  {
+    title: 'Bursa retrocalcânea',
+    text: 'Entre a face anterior do tendão e o calcâneo existe outra bursa, a retrocalcânea, acolchoada pela gordura de Kager. A proeminência de Haglund a comprime a cada passo, principalmente com o tornozelo em dorsiflexão (subidas, agachamento, corrida).',
+    layers: { tendons: 0.28, bursae: 1, bones: 1, cartilage: 1 },
+    hide: ['heelpad'],
+    select: 'bursa-retro',
+    view: { target: [20, 60, 5], dir: [-0.45, 0.25, 0.86], dist: 210 },
+  },
+  {
+    title: 'A proeminência óssea',
+    text: 'Em laranja, o excesso ósseo na porção póstero-súpero-lateral da tuberosidade do calcâneo. Em azul, o contorno de um calcâneo sem a deformidade, para comparação. A diferença entre os dois é a deformidade de Haglund.',
+    layers: { bones: 1, cartilage: 1 },
+    compare: true,
+    select: 'calcaneus',
+    view: { target: [24, 46, 4], dir: [-0.5, 0.3, 0.81], dist: 190 },
+  },
+  {
+    title: 'Corte sagital pela proeminência',
+    text: 'Corte de lado passando pela saliência. De trás para a frente: pele, bursa subcutânea, tendão do calcâneo, bursa retrocalcânea e osso. Com calçado de contraforte rígido, essas camadas ficam espremidas entre o sapato e o osso.',
+    layers: { skin: 1, fat: 1, fascia: 1, vessels: 1, nerves: 1, muscles: 1, tendons: 1, bursae: 1, ligaments: 1, cartilage: 1, bones: 1 },
+    clip: ['sagittal', 9, false],
+    view: { target: [40, 72, 9], dir: [0, 0.06, 1], dist: 360 },
+  },
+  {
+    title: 'Como se confirma e se trata',
+    text: 'A confirmação é feita com radiografia lateral do pé com carga (ângulo de Fowler-Philip e linhas paralelas de inclinação) e, se preciso, ultrassom ou ressonância para avaliar as bursas e o tendão. O tratamento costuma começar pelo conservador: calçado aberto atrás ou sem contraforte rígido, pequena elevação do calcanhar, alongamento do tríceps sural, gelo e fisioterapia. A cirurgia (ressecção da proeminência e da bursa) fica para quando isso não resolve. Este modelo é ilustrativo: a avaliação é com um ortopedista de pé e tornozelo.',
+    layers: { skin: 0.3, tendons: 1, bursae: 1, bones: 1, cartilage: 1, muscles: 1 },
+    hide: ['heelpad'],
+    view: { target: [60, 70, 4], dir: [-0.6, 0.35, 0.72], dist: 420 },
+  },
+];
