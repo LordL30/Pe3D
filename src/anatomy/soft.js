@@ -4,7 +4,7 @@ import {
   intersect as X, offset as O, plane as P, basis, euler,
 } from '../sdf.js';
 import { CUT_Y, boneShapes, landmarks } from './bones.js';
-import { tendons, muscles, vessels, nerves, fascia } from './tubes.js';
+import { tendons, muscles, vessels, nerves, fascia, ligaments } from './tubes.js';
 
 const ground = P([0, 0, 0], [0, -1, 0]);   // dentro: y > 0
 const topCut = P([0, CUT_Y, 0], [0, 1, 0]); // dentro: y < CUT_Y
@@ -58,6 +58,9 @@ const HULL = {
   'per-tert-t': 2.5, 'per-long-t': 3.0, 'per-brev-t': 3.0, 'tib-post-t': 3.0, 'fdl-t': 3.0, 'achilles': 2.6,
   'tib-ant-m': 3.0, 'ehl-m': 3.0, 'edl-m': 3.0, 'per-tert-m': 3.0, 'per-brev-m': 3.0, 'per-long-m': 3.0,
   'ret-ext-sup': 3.2, 'ret-ext-inf': 3.0, 'ret-ext-inf-2': 3.0, 'ret-flex': 3.0, 'ret-per-sup': 3.0,
+  'deltoid-tn': 2.6, 'deltoid-ts': 2.4, 'deltoid-tc': 2.4, 'atfl': 2.2,
+  'fhl-t': 2.0, 'fdl-t2': 1.9, 'fdl-t3': 1.9, 'fdl-t4': 1.9, 'fdl-t5': 1.9,
+  'fdb-t2': 1.9, 'fdb-t3': 1.9, 'fdb-t4': 1.9, 'fdb-t5': 1.9, 'n-dig-med1': 1.6, 'n-dig-lat1': 1.6,
   'abd-hal': 3.0, 'abd-dig-min': 3.0, 'a-tib-post': 3.0, 'n-tibial': 3.0, 'v-tib-post-2': 3.0, 'edb-m': 2.6,
 };
 function tubeHull(def, margin) {
@@ -72,7 +75,7 @@ function tubeHull(def, margin) {
   }
   return U(1, ...parts);
 }
-const hulls = [...tendons, ...muscles, ...vessels, ...nerves, ...fascia]
+const hulls = [...tendons, ...muscles, ...vessels, ...nerves, ...fascia, ...ligaments]
   .filter((d) => HULL[d.id] !== undefined)
   .map((d) => tubeHull(d, HULL[d.id]));
 
@@ -132,8 +135,8 @@ const talus = boneShapes.talusRaw;
 // Gordura de Kager (pré-aquileana): triângulo entre o Aquiles, o FHL e o calcâneo
 export const kagerShape = X(1.5, D(2.5,
   U(7,
-    E([27, 86, 1], [12, 30, 11]),
-    E([27, 63, 1], [12, 10, 11]),
+    E([27.5, 86, 2], [11.5, 30, 8.5]),
+    E([27.5, 63, 2], [11.5, 10, 8.5]),
     E([34, 58, 2], [10, 5, 10]),
   ),
   O(calc, 0.6), O(talus, 0.8),

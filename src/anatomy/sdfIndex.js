@@ -20,7 +20,7 @@ export const sdfStructures = [
   ...boneDefs.map((d) => ({ ...d, layer: 'bones', weight: d.highlight === 'haglund' ? haglundWeight : null })),
   ...cartilageDefs.map((d) => ({ ...d, layer: 'cartilage' })),
   { ...calcaneusNormal, layer: 'compare', hiddenFromList: true },
-  { id: 'skin', name: 'Pele', layer: 'skin', shape: skinShape, step: 1.45, weight: skinWeight, openTop: true, smooth: 1 },
+  { id: 'skin', name: 'Pele', layer: 'skin', shape: skinShape, step: 1.55, weight: skinWeight, openTop: true, smooth: 1 },
   { id: 'nails', name: 'Unhas', layer: 'skin', shape: nailShape, step: 0.45 },
   { id: 'kager', name: 'Gordura de Kager (pré-aquileana)', layer: 'bursae', shape: kagerShape, step: 1.0 },
   { id: 'heelpad', name: 'Coxim adiposo do calcanhar', layer: 'bursae', shape: heelPadShape, step: 1.0 },

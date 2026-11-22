@@ -103,7 +103,7 @@ export const tendons = [
     points, r: 1.3, t: 1.0,
   })),
   ...[
-    [[115, 56, 16], [140, 57, -10], [175, 42, -24], [208, 31, -30]],
+    [[115, 56, 16], [140, 55, -10], [175, 41, -24], [208, 31, -30]],
     [[115, 56, 16], [145, 53, -4], [190, 35, -10], [215, 30, -11.5]],
     [[115, 56, 16], [145, 51, 6], [185, 32, 3.5], [209, 28, 3]],
     [[115, 56, 16], [140, 48, 14], [180, 30, 15], [201, 25.5, 15.5]],
@@ -179,8 +179,8 @@ export const muscles = [
   },
   {
     id: 'fdb', name: 'Músculo flexor curto dos dedos', kind: 'muscle', caps: R,
-    points: [[26, 16, 0], [50, 13, -1.5], [82, 13, -1.5], [110, 14, 1], [128, 15, 3]],
-    r: [6, 11, 13, 12, 9], t: [3.2, 4.4, 4.6, 4, 2.4], up: Y,
+    points: [[26, 16, 0], [50, 14, 0], [82, 14, 1.5], [110, 14.5, 2], [128, 15, 3]],
+    r: [6, 10, 11.5, 11, 9], t: [3.2, 4.4, 4.6, 4, 2.4], up: Y,
   },
   {
     id: 'abd-dig-min', name: 'Músculo abdutor do dedo mínimo', kind: 'muscle', caps: R,
@@ -231,15 +231,15 @@ export const muscles = [
 // ------------------------------------------------------------------ LIGAMENTOS
 export const ligaments = [
   // complexo lateral do tornozelo
-  { id: 'atfl', name: 'Ligamento talofibular anterior', points: [[60.5, 67, 30], [66, 66, 25], [72, 65, 19]], r: 5, t: 1.2, up: [0.55, 0, 0.83] },
+  { id: 'atfl', name: 'Ligamento talofibular anterior', points: [[60, 67, 28.5], [66, 66, 24], [72, 65, 18.5]], r: 5, t: 1.2, up: [0.55, 0, 0.83] },
   { id: 'cfl', name: 'Ligamento calcaneofibular', points: [[49, 59, 30], [45, 50, 26.5], [42, 42, 22]], r: 3.4, t: 1.4, up: Z },
   { id: 'ptfl', name: 'Ligamento talofibular posterior', points: [[44, 71, 21], [40, 67.5, 13], [38, 64.5, 4]], r: 3.6, t: 1.8, up: Y },
   { id: 'aitfl', name: 'Ligamento tibiofibular anterior inferior', points: [[70, 100, 14], [65, 93, 19], [60, 86, 24]], r: 5, t: 1.2, up: [1, 0, 0.3] },
   { id: 'pitfl', name: 'Ligamento tibiofibular posterior inferior', points: [[48, 101, 8], [45, 94, 15], [43, 87, 21]], r: 5, t: 1.4, up: [-1, 0, 0.2] },
   // complexo medial (deltoide)
-  { id: 'deltoid-tn', name: 'Ligamento deltoide — feixe tibionavicular', points: [[69, 77, -26.5], [86, 67, -28], [104, 54, -27]], r: 3.6, t: 1.1, up: NZ },
-  { id: 'deltoid-ts', name: 'Ligamento deltoide — feixe tibiomola', points: [[65, 75, -27], [72, 62, -28.5], [80, 52, -26.5]], r: 3.8, t: 1.1, up: NZ },
-  { id: 'deltoid-tc', name: 'Ligamento deltoide — feixe tibiocalcâneo', points: [[61, 75, -27], [60, 60, -27.5], [60, 50, -26]], r: 4.2, t: 1.1, up: NZ },
+  { id: 'deltoid-tn', name: 'Ligamento deltoide — feixe tibionavicular', points: [[69, 77, -25.5], [86, 67, -26], [104, 54, -26]], r: 3.6, t: 1.1, up: NZ },
+  { id: 'deltoid-ts', name: 'Ligamento deltoide — feixe tibiomola', points: [[65, 75, -26], [72, 62, -27], [80, 52, -25.5]], r: 3.8, t: 1.1, up: NZ },
+  { id: 'deltoid-tc', name: 'Ligamento deltoide — feixe tibiocalcâneo', points: [[61, 75, -26], [60, 60, -25.5], [60, 50, -24.5]], r: 4.2, t: 1.1, up: NZ },
   { id: 'deltoid-ptt', name: 'Ligamento deltoide — feixe tibiotalar posterior', points: [[57, 77, -22], [50, 70, -18.5], [44, 66, -13]], r: 4.6, t: 1.8, up: [-0.4, 0, -1] },
   // arco medial
   { id: 'spring', name: 'Ligamento calcaneonavicular plantar (mola)', points: [[62, 42, -20], [77, 44, -21.5], [92, 47.5, -21.5], [105, 47, -20]], r: 6, t: 1.8, up: [0, -0.6, -0.8] },
@@ -269,26 +269,26 @@ ligaments.forEach((l) => { l.kind = 'ligament'; l.caps = R; });
 export const fascia = [
   {
     id: 'plantar-fascia', name: 'Fáscia (aponeurose) plantar — banda central', kind: 'fascia', caps: R,
-    points: [[22, 11.5, -4], [45, 8.2, -3], [80, 7, -1], [120, 8.2, 1], [158, 9.5, 1]],
-    r: [7, 11, 16, 22, 30], t: [1.5, 1.3, 1.1, 0.9, 0.8], up: Y,
+    points: [[22, 11.5, -4], [45, 9.5, -1], [80, 9.6, 3.5], [120, 11, 3], [158, 12.5, 1]],
+    r: [7, 9.5, 10.5, 14, 21], t: [1.5, 1.3, 1.1, 0.9, 0.8], up: Y,
   },
   {
     id: 'plantar-fascia-lat', name: 'Fáscia plantar — banda lateral', kind: 'fascia', caps: R,
     points: [[26, 13, 11], [60, 12, 23], [95, 14, 32], [116, 23, 37]], r: [4, 5, 4.5, 3], t: 0.8, up: [0, 1, 0.3],
   },
   ...[
-    [[160, 9.5, -22], [190, 5.5, -30.5], [206, 13, -32]],
-    [[160, 9.5, -8], [196, 6.5, -12], [213, 12, -12.5]],
-    [[160, 9.5, 4], [192, 6.5, 2.5], [209, 11.5, 2.5]],
-    [[160, 9.5, 14], [186, 6.5, 16], [201, 11, 16]],
-    [[158, 9.5, 24], [176, 7, 33], [190, 10.5, 33.5]],
+    [[158, 13, -17.5], [180, 11.5, -26], [193, 8.5, -30.5], [205, 14.5, -32]],
+    [[158, 12, -7], [182, 10, -10.5], [197, 8.5, -12], [211, 14.5, -12.5]],
+    [[158, 12, 4], [180, 10, 3], [193, 8.5, 2.5], [207, 14, 2.5]],
+    [[158, 12, 13], [176, 10, 15], [188, 8.5, 16], [200, 13.5, 16]],
+    [[156, 12, 22], [170, 10, 29], [180, 8.5, 33], [190, 12, 33.5]],
   ].map((points, i) => ({
     id: `plantar-fascia-slip${i + 1}`, name: `Fáscia plantar — faixa digital (${i + 1}º raio)`, kind: 'fascia', caps: R,
-    points, r: [4, 3.4, 2.6], t: 0.7, up: Y,
+    points, r: [4, 3.6, 3.2, 2.4], t: 0.7, up: Y,
   })),
   {
     id: 'ret-ext-sup', name: 'Retináculo superior dos extensores', kind: 'retinaculum', caps: R,
-    points: [[50, 122, 26], [63, 121, 26], [76, 119, 21], [86, 117, 12.5], [92, 115, 0], [92, 113, -10], [84, 112, -21], [70, 110, -26]],
+    points: [[50, 122, 24.5], [62, 121, 24], [75, 119, 19.5], [85.5, 117, 11.5], [92, 115, 0], [91, 113, -10], [82, 112, -19], [69, 110, -23]],
     r: 9, t: 0.6,
     up: [[-0.2, 0, 1], [0.3, 0, 1], [0.7, 0, 0.7], [0.9, 0, 0.4], [1, 0, 0], [1, 0, -0.3], [0.6, 0, -0.8], [0, 0, -1]],
   },
@@ -305,8 +305,8 @@ export const fascia = [
   },
   {
     id: 'ret-flex', name: 'Retináculo dos flexores (teto do túnel do tarso)', kind: 'retinaculum', caps: R,
-    points: [[63, 79, -29.5], [52, 68, -37], [40, 52, -32], [32, 40, -26]],
-    r: 9, t: 0.5, up: [[0.1, 0, -1], [-0.2, 0, -1], [-0.4, 0, -0.9], [-0.5, 0, -0.8]],
+    points: [[63, 79, -28.5], [52, 68, -34.5], [41, 56, -29], [34, 46, -23]],
+    r: 5.5, t: 0.5, up: [[0.1, 0, -1], [-0.2, 0, -1], [-0.4, 0, -0.9], [-0.5, 0, -0.8]],
   },
   {
     id: 'ret-per-sup', name: 'Retináculo superior dos fibulares', kind: 'retinaculum', caps: R,
@@ -320,10 +320,10 @@ export const vessels = [
   // artérias
   {
     id: 'a-tib-ant', name: 'Artéria tibial anterior → dorsal do pé', kind: 'artery', caps: F,
-    points: [[67, 200, 13], [73, 165, 9], [81, 125, 3], [88, 100, -1], [96, 84, -3.5], [110, 74, -6], [129, 65, -9], [140, 59, -12], [146, 52, -14], [150, 41, -16], [152, 31, -16]],
+    points: [[67, 200, 13], [73, 165, 9], [81, 125, 3], [88, 100, -1], [96, 84, -3.5], [110, 74, -6], [129, 63, -9], [140, 56.5, -12], [146, 50, -14], [150, 40, -16], [152, 31, -16]],
     r: [1.7, 1.7, 1.6, 1.6, 1.6, 1.5, 1.4, 1.3, 1.3, 1.2, 1.1],
   },
-  { id: 'a-arcuate', name: 'Artéria arqueada', kind: 'artery', caps: R, points: [[142, 58, -11], [150, 53, 1], [148, 47, 14], [139, 41, 25]], r: 0.8 },
+  { id: 'a-arcuate', name: 'Artéria arqueada', kind: 'artery', caps: R, points: [[141, 56, -11], [150, 51, 1], [148, 46, 14], [139, 40, 25]], r: 0.8 },
   { id: 'a-dmt1', name: 'Artéria metatarsal dorsal (1ª)', kind: 'artery', caps: R, points: [[146, 52, -14], [172, 43, -19], [200, 33, -22]], r: 0.7 },
   ...[
     [[150, 53, 1], [176, 42, -5], [203, 30, -6]],
@@ -406,7 +406,7 @@ export const nerves = [
   ].map((points, i) => ({ id: `n-fib-sup-b${i + 1}`, name: `Nervo cutâneo dorsal (ramo ${i + 1} do fibular superficial)`, kind: 'nerve', caps: R, points, r: 0.6 })),
   {
     id: 'n-fib-deep', name: 'Nervo fibular profundo', kind: 'nerve', caps: F,
-    points: [[65, 200, 15], [72, 165, 11], [79.5, 125, 5], [86, 100, 1], [95, 86, -0.5], [113, 74.5, -4], [138, 62, -10], [175, 47.5, -19], [205, 37, -21.5]],
+    points: [[65, 200, 15], [72, 165, 11], [79.5, 125, 5], [86, 100, 1], [95, 86, -0.5], [113, 73, -4], [138, 56, -10], [175, 40, -19], [205, 33, -21.5]],
     r: [1.3, 1.25, 1.2, 1.15, 1.1, 1, 0.9, 0.8, 0.6],
   },
   {
